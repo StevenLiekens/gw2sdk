@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using GW2SDK.Colors;
 using GW2SDK.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
@@ -32,11 +34,14 @@ namespace GW2SDK.Tests.TestInfrastructure
             services.AddTransient<UnauthorizedMessageHandler>();
             services.AddTransient<BadMessageHandler>();
             services.AddTransient<RateLimitHandler>();
+            services.AddTransient<CachingDelegatingHandler>();
+            services.AddTransient<VaryFixHandler>();
             services.AddHttpClient("GW2SDK",
                     http =>
                     {
                         http.BaseAddress = ConfigurationManager.Instance.BaseAddress;
                         http.UseSchemaVersion(SchemaVersion.Latest);
+                        http.DefaultRequestHeaders.AcceptEncoding.Add(StringWithQualityHeaderValue.Parse("gzip"));
                     })
                 .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
                 {
@@ -46,7 +51,10 @@ namespace GW2SDK.Tests.TestInfrastructure
                 .AddPolicyHandlerFromRegistry("api.guildwars2.com")
                 .AddHttpMessageHandler<UnauthorizedMessageHandler>()
                 .AddHttpMessageHandler<BadMessageHandler>()
-                .AddHttpMessageHandler<RateLimitHandler>();
+                .AddHttpMessageHandler<RateLimitHandler>()
+                .AddHttpMessageHandler<CachingDelegatingHandler>()
+                .AddHttpMessageHandler<VaryFixHandler>()
+                ;
 
             return services.BuildServiceProvider();
         }
